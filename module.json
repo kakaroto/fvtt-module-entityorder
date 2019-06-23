@@ -4,7 +4,7 @@
     "description": "Allows you to change the order of entities in the sidebar (Actors, Scenes, Items, Journal Entries)",
     "version": "0.2",
     "author": "KaKaRoTo",
-    "systems": ["dnd5e"],
+    "systems": [],
     "scripts": ["./entityorder.js"],
     "styles": [],
     "packs": [],
