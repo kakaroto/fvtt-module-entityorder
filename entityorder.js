@@ -1,4 +1,3 @@
-var pendingRender = false
 function ensureOrder(entity) {
     let order = entity.getFlag("entityorder", "order");
     if (order === undefined) {
@@ -70,19 +69,30 @@ SidebarDirectory.prototype._handleDropData = function(event, data) {
 	//console.log("Folder is going to get updated from ", ent.data.folder, " to " , folder_id);
 	//ent.setFlag("entityorder", "order", "");
     } else {
-	pendingRender = true
+	this.constructor.collection._pendingRender = true
     }
+    this._scrollTop = $(event.target).closest(".directory-list").scrollTop()
     return this._entityorder_original_handleDropData(event, data)
 }
 
 function entityUpdated(obj) {
-    if (pendingRender) {
+    if (obj.collection._pendingRender) {
 	obj.collection.render()
     }
-    pendingRender = false
+    obj.collection._pendingRender = false
+}
+
+function directoryRendered(obj, html, data) {
+    if (obj._scrollTop) obj.element.find(".directory-list").scrollTop(obj._scrollTop)
+    delete obj._scrollTop
 }
 
 Hooks.on('updateJournalEntry', entityUpdated)
 Hooks.on('updateScene', entityUpdated)
 Hooks.on('updateActor', entityUpdated)
 Hooks.on('updateItem', entityUpdated)
+
+Hooks.on('renderJournalDirectory', directoryRendered)
+Hooks.on('renderSceneDirectory', directoryRendered)
+Hooks.on('renderActorDirectory', directoryRendered)
+Hooks.on('renderItemDirectory', directoryRendered)
