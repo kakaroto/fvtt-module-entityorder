@@ -27,10 +27,8 @@ Folder.setupFolders = function(entityType, entities) {
 
 SidebarDirectory.prototype._entityorder_original_handleDropData = SidebarDirectory.prototype._handleDropData;
 SidebarDirectory.prototype._handleDropData = function(event, data) {
-    console.log("Handle drop data : ", event, data);
     let before = $(event.target).closest(".directory-item");
     let after = $(event.target).next(".directory-item");
-    console.log("Going to place item between ", before, " and ", after);
     let ent = this.constructor.collection.get(data.id);
     // ent.setFlag("entityorder", "order", (before + after) / 2 )
 
@@ -66,10 +64,10 @@ SidebarDirectory.prototype._handleDropData = function(event, data) {
 	// Added in between
 	new_order = (before_ent.getFlag("entityorder", "order") + after_ent.getFlag("entityorder", "order")) / 2
     }
-    console.log("New order = ", new_order)
+    //console.log("New order = ", new_order)
     ent.setFlag("entityorder", "order", new_order);
     if (ent.data.folder != folder_id) {
-	console.log("Folder is going to get updated from ", ent.data.folder, " to " , folder_id);
+	//console.log("Folder is going to get updated from ", ent.data.folder, " to " , folder_id);
 	//ent.setFlag("entityorder", "order", "");
     } else {
 	pendingRender = true
