@@ -19,6 +19,10 @@ Folder._entityorder_original_setupFolders = Folder.setupFolders;
 Folder.setupFolders = function(entityType, entities) {
     entities.forEach(ensureOrder)
     sorted_entities = entities.sort(sortEntities)
+    // Reset order values so it doesn't continuously get divided into floating values if we re-order often
+    for (let i = 0; i < sorted_entities.length; i++) {
+	sorted_entities[i].setFlag("entityorder", "order", 0)
+    }
     let [tree, root_entities] = this._entityorder_original_setupFolders(entityType, sorted_entities);
     tree.forEach(cleanFolderName)
     return [tree, root_entities]
