@@ -9,6 +9,6 @@
     "styles": [],
     "packs": [],
     "url": "https://github.com/kakaroto/fvtt-module-entityorder",
-    "manifest": "https://raw.githubusercontent.com/kakaroto/fvtt-module-entityorder/master/module.json",
+    "manifest": "https://raw.githubusercontent.com/kakaroto/fvtt-module-entityorder/master/entityorder/module.json",
     "download": "https://github.com/kakaroto/fvtt-module-entityorder/raw/master/entityorder.zip"
 }
