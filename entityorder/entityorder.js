@@ -33,7 +33,9 @@ SidebarDirectory.prototype._handleDropData = function(event, data) {
     let before = $(event.target).closest(".directory-item");
     let after = $(event.target).next(".directory-item");
     let ent = this.constructor.collection.get(data.id);
-    // ent.setFlag("entityorder", "order", (before + after) / 2 )
+    if (ent == undefined) {
+	return this._entityorder_original_handleDropData(event, data)
+    }
 
     folder = $(event.target).closest(".folder");
     if ( folder.length > 0 ) {
