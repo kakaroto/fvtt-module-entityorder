@@ -1,28 +1,23 @@
-function ensureOrder(entity) {
-    let order = entity.getFlag("entityorder", "order");
-    if (order === undefined) {
-	entity.setFlag("entityorder", "order", entity.collection.entities.indexOf(entity))
-    }
-}
 function cmpEntities(a, b) {
     let order_a = a.getFlag("entityorder", "order");
     let order_b = b.getFlag("entityorder", "order");
+    if (order_a == undefined) order_a = a.collection.entities.indexOf(a);
+    if (order_b == undefined) order_b = b.collection.entities.indexOf(b);
     return order_a - order_b;
 }
 
 function cleanFolderName(folder) {
     folder.name = folder.name.replace(/^•[0-9]+•/, "")
     if (folder.children != undefined) {
-	folder.children.forEach(cleanFolderName);
+        folder.children.forEach(cleanFolderName);
     }
 }
 
 function entityorder_setupFolders(entityType, entities) {
-    entities.forEach(ensureOrder)
     sorted_entities = entities.sort(cmpEntities)
     // Reset order values so it doesn't continuously get divided into floating values if we re-order often
     for (let i = 0; i < sorted_entities.length; i++) {
-	sorted_entities[i].setFlag("entityorder", "order", i)
+        sorted_entities[i].setFlag("entityorder", "order", i);
     }
     let [tree, root_entities] = this._entityorder_original_setupFolders(entityType, sorted_entities);
     tree.forEach(cleanFolderName)
@@ -34,65 +29,56 @@ function entityorder_handleDropData(event, data) {
     let after = $(event.target).next(".directory-item");
     let ent = this.constructor.collection.get(data.id);
     if (ent == undefined) {
-	//console.log("Dropped unknown entity.")
-	return this._entityorder_original_handleDropData(event, data)
+        //console.log("Dropped unknown entity.")
+        return this._entityorder_original_handleDropData(event, data)
     }
 
     //console.log("Dropped before ", before, " and after ", after)
     folder = $(event.target).closest(".folder");
     if ( folder.length > 0 ) {
-	folder_id = folder.attr("data-folder-id");
+        folder_id = folder.attr("data-folder-id");
     } else {
-	folder_id = null;
+        folder_id = null;
     }
     var new_order = ""
     if (before.length != 0 && after.length == 0) {
-	after = before.next(".directory-item")
+        after = before.next(".directory-item")
     }
     if (before.length == 0 && after.length == 0) {
-	children = folder.find(".directory-item")
-	// Added to the beginning of the folder
-	if (children.length == 0) {
-	    new_order = 0
-	} else {
-	    after = $(children[0])
-	    let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
-	    new_order = after_ent.getFlag("entityorder", "order") -1
-	}
+        children = folder.find(".directory-item")
+        // Added to the beginning of the folder
+        if (children.length == 0) {
+            new_order = 0
+        } else {
+            after = $(children[0])
+            let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
+            new_order = after_ent.getFlag("entityorder", "order") -1
+        }
     } else if (before.length != 0 && after.length == 0) {
-	let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
-	
-	// Added to the end of a folder
-	new_order = before_ent.getFlag("entityorder", "order") + 1
+        let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
+        
+        // Added to the end of a folder
+        new_order = before_ent.getFlag("entityorder", "order") + 1
     } else if (before.length == 0 && after.length != 0) {
-	let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
-	
-	// Added between the folder and its first element
-	new_order = after_ent.getFlag("entityorder", "order") -1
+        let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
+        
+        // Added between the folder and its first element
+        new_order = after_ent.getFlag("entityorder", "order") -1
     } else {
-	let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
-	let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
-	
-	// Added in between
-	new_order = (before_ent.getFlag("entityorder", "order") + after_ent.getFlag("entityorder", "order")) / 2
+        let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
+        let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
+        
+        // Added in between
+        new_order = (before_ent.getFlag("entityorder", "order") + after_ent.getFlag("entityorder", "order")) / 2
     }
     //console.log("New order = ", new_order)
-    ent.setFlag("entityorder", "order", new_order);
-    if (ent.data.folder != folder_id) {
-	//console.log("Folder is going to get updated from ", ent.data.folder, " to " , folder_id);
-	//ent.setFlag("entityorder", "order", "");
-    } else {
-	this.constructor.collection._pendingRender = true
+    p = ent.setFlag("entityorder", "order", new_order);
+    // If different folder, then it will already get re-rendered
+    if (ent.data.folder == folder_id) {
+        p.then(() => ent.collection.render())
     }
     this._scrollTop = $(event.target).closest(".directory-list").scrollTop()
     return this._entityorder_original_handleDropData(event, data)
-}
-
-function entityUpdated(obj) {
-    if (obj.collection._pendingRender) {
-	obj.collection.render()
-    }
-    obj.collection._pendingRender = false
 }
 
 function directoryRendered(obj, html, data) {
@@ -100,15 +86,40 @@ function directoryRendered(obj, html, data) {
     delete obj._scrollTop
 }
 
-Hooks.on('updateJournalEntry', entityUpdated)
-Hooks.on('updateScene', entityUpdated)
-Hooks.on('updateActor', entityUpdated)
-Hooks.on('updateItem', entityUpdated)
-
 Hooks.on('renderJournalDirectory', directoryRendered)
 Hooks.on('renderSceneDirectory', directoryRendered)
 Hooks.on('renderActorDirectory', directoryRendered)
 Hooks.on('renderItemDirectory', directoryRendered)
+
+function getEntityFolderContext(html, options) {
+    options["Sort Alphabetically"] = {
+      icon: '<i class="fas fa-sort-alpha-down"></i>',
+      condition: game.user.isGM,
+      callback: header => {
+          let folderId = header.parent().attr("data-folder-id");
+          let folder = game.folders.get(folderId);
+          let entities = folder.data.content;
+
+          let sorted_entities = entities.sort((a, b) => a.data.name.localeCompare(b.data.name))
+          promises = []
+          // Reset order values according to the new order within this folder
+          // This won't affect the order with the other folders and the whole collection
+          // order will be reset on the next render
+          for (let i = 0; i < sorted_entities.length; i++) {
+              promises.push(sorted_entities[i].setFlag("entityorder", "order", i));
+          }
+          let collection = folder.entityCollection;
+          if ( collection )
+              Promise.all(promises).then(() => collection.render());
+      }
+    };
+}
+
+Hooks.on('getJournalDirectoryFolderContext', getEntityFolderContext);
+Hooks.on('getSceneDirectoryFolderContext', getEntityFolderContext);
+Hooks.on('getActorDirectoryFolderContext', getEntityFolderContext);
+Hooks.on('getItemDirectoryFolderContext', getEntityFolderContext);
+
 Hooks.on('init', function() {
     // Need to do this on init to avoid conflict with infinite_folders module
     Folder._entityorder_original_setupFolders = Folder.setupFolders;
