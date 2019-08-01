@@ -1,8 +1,9 @@
 {
     "name": "entityorder",
     "title": "Entity Order",
-    "description": "Allows you to change the order of entities in the sidebar (Actors, Scenes, Items, Journal Entries) as well as folders",
+    "description": "Allows you to change the order of entities in the sidebar (Actors, Scenes, Items, Journal Entries) as well as folders.",
     "version": "0.6",
+    "minimumCoreVersion": "0.3.4",
     "author": "KaKaRoTo",
     "scripts": ["./entityorder.js"],
     "styles": [],
@@ -10,4 +11,5 @@
     "url": "https://github.com/kakaroto/fvtt-module-entityorder",
     "manifest": "https://raw.githubusercontent.com/kakaroto/fvtt-module-entityorder/master/entityorder/module.json",
     "download": "https://github.com/kakaroto/fvtt-module-entityorder/raw/master/entityorder.zip"
+
 }

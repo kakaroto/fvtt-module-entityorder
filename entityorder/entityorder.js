@@ -36,10 +36,10 @@ class EntityOrder {
   }
 
   // Replacement to setupFolder that sorts the folders and entities before returning the result
-  static setupFolders(entityType, entities) {
-    game.data.folders = game.data.folders.sort((a, b) => a.sort - b.sort)
+  static setupFolders(folders, entities) {
+    folders = folders.sort((a, b) => a.data.sort - b.data.sort)
     let sorted_entities = entities.sort(EntityOrder.cmpEntities);
-    return this._entityorder_original_setupFolders(entityType, sorted_entities);
+    return this._entityorder_original_setupFolders(folders, sorted_entities);
   }
 
   static _onFolderDragStart(obj, event) {
@@ -77,9 +77,8 @@ class EntityOrder {
   static _handleFolderDropData(sidebar, event, data) {
     let folder = game.folders.get(data.id);
 
-    if (folder == undefined) {
+    if (folder == undefined)
       return false;
-    }
 
     let sibling = null
     let closest = $(event.target).closest(".folder");
@@ -89,6 +88,7 @@ class EntityOrder {
     }
     let parent_id = sibling ? sibling.parent : null
     let sibling_folders = game.data.folders.filter(f => f.type == sidebar.constructor.entity && f.parent == parent_id);
+    sibling_folders = sibling_folders.sort((a, b) => a.sort - b.sort)
     let last_order = sibling_folders.length > 0 ? sibling_folders[sibling_folders.length - 1].sort : 0
     let previous_order = sibling ? sibling.sort : last_order
     let next_order = previous_order + 2 * EntityOrder.ORDER_MUL;
@@ -97,7 +97,7 @@ class EntityOrder {
       if (idx + 1 < sibling_folders.length)
         next_order = sibling_folders[idx + 1].sort
     }
-    let new_order = (previous_order + next_order) / 2
+    let new_order = parseInt(previous_order + next_order) / 2
     folder.update({ "parent": parent_id, "sort": new_order })
     return false;
   }
@@ -148,7 +148,7 @@ class EntityOrder {
       // Added in between
       new_order = (before_ent.getFlag("entityorder", "order") + after_ent.getFlag("entityorder", "order")) / 2
     }
-    console.log("New order = ", new_order)
+    //console.log("New order = ", new_order)
     // TODO: Re-order the list if the new_order has become a float (Number.isInteger() == false)
     let promise = ent.setFlag("entityorder", "order", new_order);
     // If different folder, then it will already get re-rendered
@@ -171,13 +171,14 @@ class EntityOrder {
   }
 
   static getEntityFolderContext(html, options) {
-    options["Sort Alphabetically"] = {
+    options.push({
+      name: "Sort Alphabetically",
       icon: '<i class="fas fa-sort-alpha-down"></i>',
       condition: game.user.isGM,
       callback: header => {
         let folderId = header.parent().attr("data-folder-id");
         let folder = game.folders.get(folderId);
-        let entities = folder.data.content;
+        let entities = folder.content;
         let collection = folder.entityCollection;
 
         // Reset order values according to the new order within this folder
@@ -185,10 +186,12 @@ class EntityOrder {
         // order will be reset on the next render
         let sorted_entities = entities.sort((a, b) => a.data.name.localeCompare(b.data.name))
         let promises = EntityOrder.reorderEntities(sorted_entities)
-        if (collection)
+        if (collection) {
+          collection._scrollTop = html.find(".directory-list").scrollTop()
           Promise.all(promises).then(() => collection.render());
+        }
       }
-    };
+    })
   }
 
 }
@@ -205,8 +208,8 @@ Hooks.on('getItemDirectoryFolderContext', EntityOrder.getEntityFolderContext);
 
 Hooks.on('init', function () {
   // Need to do this on init to avoid conflict with infinite_folders module
-  Folder._entityorder_original_setupFolders = Folder.setupFolders;
-  Folder.setupFolders = EntityOrder.setupFolders
+  SidebarDirectory._entityorder_original_setupFolders = SidebarDirectory.setupFolders;
+  SidebarDirectory.setupFolders = EntityOrder.setupFolders
   SidebarDirectory.prototype._entityorder_original_onDrop = SidebarDirectory.prototype._onDrop;
   SidebarDirectory.prototype._onDrop = EntityOrder._onDrop
   SidebarDirectory.prototype._entityorder_original_handleDropData = SidebarDirectory.prototype._handleDropData;
