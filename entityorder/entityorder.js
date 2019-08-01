@@ -1,196 +1,196 @@
 class EntityOrder {
-    
-    // Apparently that's how we do consts inside classes...
-    static get ORDER_MUL() {
-	return 100000;
+
+  // Apparently that's how we do consts inside classes...
+  static get ORDER_MUL() {
+    return 100000;
+  }
+
+  // Re-order the entire list based on their position. Only used when we've run out of integers for
+  // our sorting values.
+  static reorderEntities(entities) {
+    let promises = []
+    for (let i = 0; i < entities.length; i++) {
+      promises.push(entities[i].setFlag("entityorder", "order", i * EntityOrder.ORDER_MUL));
+    }
+    return promises;
+  }
+
+  // Compare entities
+  static cmpEntities(a, b) {
+    let order_a = a.getFlag("entityorder", "order");
+    let order_b = b.getFlag("entityorder", "order");
+    if (order_a == undefined) order_a = a.collection.entities.indexOf(a) * EntityOrder.ORDER_MUL;
+    if (order_b == undefined) order_b = b.collection.entities.indexOf(b) * EntityOrder.ORDER_MUL;
+    return order_a - order_b;
+  }
+
+  // Clean folder names by removing the "•order•name" from the name as it used to be
+  // and use the new 'sort' field introduced in 0.3.2
+  static cleanFolderName(folder) {
+    let match = folder.name.match(/^•([0-9]+)•(.+)/, "");
+    if (match) {
+      let order = parseInt("0" + match[1]) * EntityOrder.ORDER_MUL;
+      return folder.update({ "name": match[2], "sort": order });
+    }
+    return Promise.resolve(folder);
+  }
+
+  // Replacement to setupFolder that sorts the folders and entities before returning the result
+  static setupFolders(entityType, entities) {
+    game.data.folders = game.data.folders.sort((a, b) => a.sort - b.sort)
+    let sorted_entities = entities.sort(EntityOrder.cmpEntities);
+    return this._entityorder_original_setupFolders(entityType, sorted_entities);
+  }
+
+  static _onFolderDragStart(obj, event) {
+    event.stopPropagation();
+    let li = $(event.currentTarget);
+    if (!li.hasClass("folder")) li = li.parents(".folder");
+    let folderId = li.attr("data-folder-id");
+    event.dataTransfer.setData("text/plain", JSON.stringify({
+      type: obj.constructor.entity + "Folder",
+      id: folderId
+    }));
+  }
+
+  static _onDrop(event) {
+    // Try to extract the data
+    let data;
+    try {
+      data = JSON.parse(event.dataTransfer.getData('text/plain'));
+    } catch (err) {
+      return this._entityorder_original_onDrop(event)
     }
 
-    // Re-order the entire list based on their position. Only used when we've run out of integers for
-    // our sorting values.
-    static reorderEntities(entities) {
-	let promises = []
-	for (let i = 0; i < entities.length; i++) {
-            promises.push(entities[i].setFlag("entityorder", "order", i * EntityOrder.ORDER_MUL));
-	}
-	return promises;
-    }
-
-    // Compare entities
-    static cmpEntities(a, b) {
-	let order_a = a.getFlag("entityorder", "order");
-	let order_b = b.getFlag("entityorder", "order");
-	if (order_a == undefined) order_a = a.collection.entities.indexOf(a) * EntityOrder.ORDER_MUL;
-	if (order_b == undefined) order_b = b.collection.entities.indexOf(b) * EntityOrder.ORDER_MUL;
-	return order_a - order_b;
-    }
-
-    // Clean folder names by removing the "•order•name" from the name as it used to be
-    // and use the new 'sort' field introduced in 0.3.2
-    static cleanFolderName(folder) {
-	let match = folder.name.match(/^•([0-9]+)•(.+)/, "");
-	if (match) {
-	    let order = parseInt("0" + match[1]) * EntityOrder.ORDER_MUL;
-	    return folder.update({"name": match[2], "sort": order});
-	}
-	return Promise.resolve(folder);
-    }
-
-    // Replacement to setupFolder that sorts the folders and entities before returning the result
-    static setupFolders(entityType, entities) {
-	game.data.folders = game.data.folders.sort((a, b) => a.sort - b.sort)
-	let sorted_entities = entities.sort(EntityOrder.cmpEntities);
-	return this._entityorder_original_setupFolders(entityType, sorted_entities);
-    }
-
-    static _onFolderDragStart(obj, event) {
-	event.stopPropagation();
-	let li = $(event.currentTarget);
-	if ( !li.hasClass("folder") ) li = li.parents(".folder");
-	let folderId = li.attr("data-folder-id");
-	event.dataTransfer.setData("text/plain", JSON.stringify({
-	    type: obj.constructor.entity + "Folder",
-	    id: folderId
-	}));
-    }
-
-    static _onDrop(event) {
-	// Try to extract the data
-	let data;
-	try {
-	    data = JSON.parse(event.dataTransfer.getData('text/plain'));
-	} catch (err) {
-            return this._entityorder_original_onDrop(event)
-	}
-
-	if (data.type.endsWith("Folder")) {
-	    event.preventDefault();
-	    if ( data.type !== this.constructor.entity + "Folder")
-		return false;
-
-	    // Call the drop handler
-	    return EntityOrder._handleFolderDropData(this, event, data);
-	} else {
-            return this._entityorder_original_onDrop(event)
-	}
-    }
-
-    static _handleFolderDropData(sidebar, event, data) {
-	let folder = game.folders.get(data.id);
-
-	if (folder == undefined) {
-            return false;
-	}
-
-	let sibling = null
-	let closest = $(event.target).closest(".folder");
-	if ( closest.length > 0 ) {
-            let sibling_id = closest.attr("data-folder-id");
-	    sibling = game.data.folders.find(f => f._id == sibling_id);
-	}
-	let parent_id = sibling ? sibling.parent : null
-	let sibling_folders = game.data.folders.filter(f => f.type == sidebar.constructor.entity && f.parent == parent_id);
-	let last_order = sibling_folders.length >  0 ? sibling_folders[sibling_folders.length - 1].sort : 0
-	let previous_order = sibling ? sibling.sort : last_order
-	let next_order = previous_order + 2 * EntityOrder.ORDER_MUL;
-	if (sibling) {
-	    let idx = sibling_folders.indexOf(sibling)
-	    if (idx + 1 < sibling_folders.length)
-		next_order = sibling_folders[idx + 1].sort
-	}
-	let new_order = (previous_order + next_order) / 2
-	folder.update({"parent": parent_id, "sort": new_order})
+    if (data.type.endsWith("Folder")) {
+      event.preventDefault();
+      if (data.type !== this.constructor.entity + "Folder")
         return false;
+
+      // Call the drop handler
+      return EntityOrder._handleFolderDropData(this, event, data);
+    } else {
+      return this._entityorder_original_onDrop(event)
+    }
+  }
+
+  static _handleFolderDropData(sidebar, event, data) {
+    let folder = game.folders.get(data.id);
+
+    if (folder == undefined) {
+      return false;
     }
 
-    static _handleDropData(event, data) {
-	let before = $(event.target).closest(".directory-item");
-	let after = $(event.target).next(".directory-item");
-	let ent = this.constructor.collection.get(data.id);
-	if (ent == undefined) {
-            //console.log("Dropped unknown entity.")
-            return this._entityorder_original_handleDropData(event, data)
-	}
+    let sibling = null
+    let closest = $(event.target).closest(".folder");
+    if (closest.length > 0) {
+      let sibling_id = closest.attr("data-folder-id");
+      sibling = game.data.folders.find(f => f._id == sibling_id);
+    }
+    let parent_id = sibling ? sibling.parent : null
+    let sibling_folders = game.data.folders.filter(f => f.type == sidebar.constructor.entity && f.parent == parent_id);
+    let last_order = sibling_folders.length > 0 ? sibling_folders[sibling_folders.length - 1].sort : 0
+    let previous_order = sibling ? sibling.sort : last_order
+    let next_order = previous_order + 2 * EntityOrder.ORDER_MUL;
+    if (sibling) {
+      let idx = sibling_folders.indexOf(sibling)
+      if (idx + 1 < sibling_folders.length)
+        next_order = sibling_folders[idx + 1].sort
+    }
+    let new_order = (previous_order + next_order) / 2
+    folder.update({ "parent": parent_id, "sort": new_order })
+    return false;
+  }
 
-	//console.log("Dropped before ", before, " and after ", after)
-	let folder = $(event.target).closest(".folder");
-	let new_order = EntityOrder.ORDER_MUL
-        let folder_id = null;
-	if ( folder.length > 0 ) {
-            folder_id = folder.attr("data-folder-id");
-	}
-	if (before.length != 0 && after.length == 0) {
-            after = before.next(".directory-item")
-	}
-	if (before.length == 0 && after.length == 0) {
-            let children = folder.find(".directory-item")
-            // Added to the beginning of the folder
-            if (children.length == 0) {
-		new_order = EntityOrder.ORDER_MUL
-            } else {
-		after = $(children[0])
-		let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
-		new_order = after_ent.getFlag("entityorder", "order") / 2
-            }
-	} else if (before.length != 0 && after.length == 0) {
-            let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
-            
-            // Added to the end of a folder
-            new_order = before_ent.getFlag("entityorder", "order") + EntityOrder.ORDER_MUL
-	} else if (before.length == 0 && after.length != 0) {
-            let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
-            
-            // Added between the folder and its first element
-            new_order = after_ent.getFlag("entityorder", "order") / 2
-	} else {
-            let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
-            let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
-            
-            // Added in between
-            new_order = (before_ent.getFlag("entityorder", "order") + after_ent.getFlag("entityorder", "order")) / 2
-	}
-	console.log("New order = ", new_order)
-	// TODO: Re-order the list if the new_order has become a float (Number.isInteger() == false)
-	let promise = ent.setFlag("entityorder", "order", new_order);
-	// If different folder, then it will already get re-rendered
-	if (ent.data.folder == folder_id) {
-            promise.then(() => ent.collection.render())
-	}
-	this._scrollTop = $(event.target).closest(".directory-list").scrollTop()
-	return this._entityorder_original_handleDropData(event, data)
+  static _handleDropData(event, data) {
+    let before = $(event.target).closest(".directory-item");
+    let after = $(event.target).next(".directory-item");
+    let ent = this.constructor.collection.get(data.id);
+    if (ent == undefined) {
+      //console.log("Dropped unknown entity.")
+      return this._entityorder_original_handleDropData(event, data)
     }
 
-
-    static directoryRendered(obj, html, data) {
-	if (obj._scrollTop) obj.element.find(".directory-list").scrollTop(obj._scrollTop)
-	delete obj._scrollTop
-	// Make folders draggable
-	html.find("li.folder").each((i, li) => {
-	    li.setAttribute("draggable", true);
-	    li.addEventListener('dragstart', ev => EntityOrder._onFolderDragStart(obj, ev), false);
-	});
+    //console.log("Dropped before ", before, " and after ", after)
+    let folder = $(event.target).closest(".folder");
+    let new_order = EntityOrder.ORDER_MUL
+    let folder_id = null;
+    if (folder.length > 0) {
+      folder_id = folder.attr("data-folder-id");
     }
-
-    static getEntityFolderContext(html, options) {
-	options["Sort Alphabetically"] = {
-	    icon: '<i class="fas fa-sort-alpha-down"></i>',
-	    condition: game.user.isGM,
-	    callback: header => {
-		let folderId = header.parent().attr("data-folder-id");
-		let folder = game.folders.get(folderId);
-		let entities = folder.data.content;
-		let collection = folder.entityCollection;
-		
-		// Reset order values according to the new order within this folder
-		// This won't affect the order with the other folders and the whole collection
-		// order will be reset on the next render
-		let sorted_entities = entities.sort((a, b) => a.data.name.localeCompare(b.data.name))
-		let promises = EntityOrder.reorderEntities(sorted_entities)
-		if ( collection )
-		    Promise.all(promises).then(() => collection.render());
-	    }
-	};
+    if (before.length != 0 && after.length == 0) {
+      after = before.next(".directory-item")
     }
-    
+    if (before.length == 0 && after.length == 0) {
+      let children = folder.find(".directory-item")
+      // Added to the beginning of the folder
+      if (children.length == 0) {
+        new_order = EntityOrder.ORDER_MUL
+      } else {
+        after = $(children[0])
+        let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
+        new_order = after_ent.getFlag("entityorder", "order") / 2
+      }
+    } else if (before.length != 0 && after.length == 0) {
+      let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
+
+      // Added to the end of a folder
+      new_order = before_ent.getFlag("entityorder", "order") + EntityOrder.ORDER_MUL
+    } else if (before.length == 0 && after.length != 0) {
+      let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
+
+      // Added between the folder and its first element
+      new_order = after_ent.getFlag("entityorder", "order") / 2
+    } else {
+      let before_ent = this.constructor.collection.get(before.attr("data-entity-id"))
+      let after_ent = this.constructor.collection.get(after.attr("data-entity-id"))
+
+      // Added in between
+      new_order = (before_ent.getFlag("entityorder", "order") + after_ent.getFlag("entityorder", "order")) / 2
+    }
+    console.log("New order = ", new_order)
+    // TODO: Re-order the list if the new_order has become a float (Number.isInteger() == false)
+    let promise = ent.setFlag("entityorder", "order", new_order);
+    // If different folder, then it will already get re-rendered
+    if (ent.data.folder == folder_id) {
+      promise.then(() => ent.collection.render())
+    }
+    this._scrollTop = $(event.target).closest(".directory-list").scrollTop()
+    return this._entityorder_original_handleDropData(event, data)
+  }
+
+
+  static directoryRendered(obj, html, data) {
+    if (obj._scrollTop) obj.element.find(".directory-list").scrollTop(obj._scrollTop)
+    delete obj._scrollTop
+    // Make folders draggable
+    html.find("li.folder").each((i, li) => {
+      li.setAttribute("draggable", true);
+      li.addEventListener('dragstart', ev => EntityOrder._onFolderDragStart(obj, ev), false);
+    });
+  }
+
+  static getEntityFolderContext(html, options) {
+    options["Sort Alphabetically"] = {
+      icon: '<i class="fas fa-sort-alpha-down"></i>',
+      condition: game.user.isGM,
+      callback: header => {
+        let folderId = header.parent().attr("data-folder-id");
+        let folder = game.folders.get(folderId);
+        let entities = folder.data.content;
+        let collection = folder.entityCollection;
+
+        // Reset order values according to the new order within this folder
+        // This won't affect the order with the other folders and the whole collection
+        // order will be reset on the next render
+        let sorted_entities = entities.sort((a, b) => a.data.name.localeCompare(b.data.name))
+        let promises = EntityOrder.reorderEntities(sorted_entities)
+        if (collection)
+          Promise.all(promises).then(() => collection.render());
+      }
+    };
+  }
+
 }
 
 Hooks.on('renderJournalDirectory', EntityOrder.directoryRendered)
@@ -203,17 +203,17 @@ Hooks.on('getSceneDirectoryFolderContext', EntityOrder.getEntityFolderContext);
 Hooks.on('getActorDirectoryFolderContext', EntityOrder.getEntityFolderContext);
 Hooks.on('getItemDirectoryFolderContext', EntityOrder.getEntityFolderContext);
 
-Hooks.on('init', function() {
-    // Need to do this on init to avoid conflict with infinite_folders module
-    Folder._entityorder_original_setupFolders = Folder.setupFolders;
-    Folder.setupFolders = EntityOrder.setupFolders
-    SidebarDirectory.prototype._entityorder_original_onDrop = SidebarDirectory.prototype._onDrop;
-    SidebarDirectory.prototype._onDrop = EntityOrder._onDrop
-    SidebarDirectory.prototype._entityorder_original_handleDropData = SidebarDirectory.prototype._handleDropData;
-    SidebarDirectory.prototype._handleDropData = EntityOrder._handleDropData
+Hooks.on('init', function () {
+  // Need to do this on init to avoid conflict with infinite_folders module
+  Folder._entityorder_original_setupFolders = Folder.setupFolders;
+  Folder.setupFolders = EntityOrder.setupFolders
+  SidebarDirectory.prototype._entityorder_original_onDrop = SidebarDirectory.prototype._onDrop;
+  SidebarDirectory.prototype._onDrop = EntityOrder._onDrop
+  SidebarDirectory.prototype._entityorder_original_handleDropData = SidebarDirectory.prototype._handleDropData;
+  SidebarDirectory.prototype._handleDropData = EntityOrder._handleDropData
 })
 
-Hooks.on('ready', function() {
-    // Let's clean the folder names here and let it redraw if needed.
-    game.folders.entities.forEach(EntityOrder.cleanFolderName);
+Hooks.on('ready', function () {
+  // Let's clean the folder names here and let it redraw if needed.
+  game.folders.entities.forEach(EntityOrder.cleanFolderName);
 })
