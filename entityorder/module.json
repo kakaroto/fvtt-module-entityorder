@@ -2,7 +2,7 @@
     "name": "entityorder",
     "title": "Entity Order",
     "description": "Allows you to change the order of entities in the sidebar (Actors, Scenes, Items, Journal Entries) as well as folders.",
-    "version": "0.8",
+    "version": "0.8.1",
     "minimumCoreVersion": "0.3.4",
     "author": "KaKaRoTo",
     "scripts": ["./entityorder.js"],

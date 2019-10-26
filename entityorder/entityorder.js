@@ -219,7 +219,7 @@ class EntityOrder {
 		ui.notifications.warn("EntityOrder: Migrating sort order from module to core sort key.<p>Please be patient as this may take a while... This message will disappear when the migration is done.</p>")
 		setTimeout(() => EntityOrder.migratingWarning = false, 5000)
 	    }
-	    return entity.update({sort: order, "flags.entityorder.order": null})
+	    return entity.update({sort: Math.floor(order), "flags.entityorder.order": null})
 	}
 	return Promise.resolve(entity);
     }   
