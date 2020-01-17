@@ -1,9 +1,9 @@
 {
     "name": "entityorder",
     "title": "Entity Order",
-    "description": "Allows you to change the order of entities in the sidebar (Actors, Scenes, Items, Journal Entries) as well as folders.",
-    "version": "0.9",
-    "minimumCoreVersion": "0.4.0",
+    "description": "<p><strong>This module is deprecated and should not be used anymore.</strong></p><p>If enabled, it will migrate the order data from the module to the FVTT core database and <strong>disables itself</strong>.</p><p>For the entity sorting feature, please use the <strong>Furnace</strong> module instead</strong></p><p>Used to allow you to change the order of entities in the sidebar (Actors, Scenes, Items, Journal Entries, Folders) until that feature became part of the core.</p>",
+    "version": "1.0",
+    "minimumCoreVersion": "0.4.4",
     "author": "KaKaRoTo",
     "scripts": ["./entityorder.js"],
     "styles": [],
